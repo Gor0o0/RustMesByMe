@@ -118,9 +118,10 @@ onMounted(async()=>{
 }
 
 .app{
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  height: 100vh; /* - */
+  overflow: hidden; /* запретит всему app прокручиваться, разрешим прокрутку ток для */
 }
 
 .chat{
@@ -128,6 +129,7 @@ onMounted(async()=>{
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* чат целиком не должен прокручиваться, ток meslist внутри */
 }
 
 .chat-info{

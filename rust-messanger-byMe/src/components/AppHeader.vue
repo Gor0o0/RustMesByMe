@@ -26,7 +26,8 @@ defineProps<{
 /*/ Например .header не будет применяться к другим header в других vue компонентах /*/
 
 .header {
-  display: cover;
+  display: flex; /* - */
+  flex-shrink: 0; /* Управляет может ли flex уменьшать элемент */
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
@@ -47,7 +48,7 @@ defineProps<{
 .badge {
   padding: 6px 10px;
   border: 1px solid #343842;
-  border-bottom: 6px;
+  border-radius: 6px; /* - */
   color: #afb5c0;
   background: #20232a;
   font-size: 12px;
