@@ -1,10 +1,25 @@
 <script setup lang="ts">
 
+import UserSwitcher from "./UserSwitcher.vue";
+
+import type {User} from "../types/user.ts";
+
 //defineProps - спец конструкция bue которая сообщает:
 //>этот компонент ожидает получения данных от родительского компонента
 defineProps<{
   status: string;
+  users: User[];
+  currentUser: User;
 }>();
+
+const emit = defineEmits<{
+  select: [user: User];
+}>();
+
+function selectUser(user: User){
+  emit("select", user);
+}
+
 </script>
 
 <template>
@@ -13,6 +28,14 @@ defineProps<{
       <h1>Rust-Messenger(byMe)</h1>
 
       <p>{{ status }}</p>
+    </div>
+
+    <div class="header__actions">
+      <UserSwitcher
+        :users="users"
+        :current-user-id="currentUser.id"
+        @select="selectUser"
+      />
     </div>
 
     <span class="badge">
@@ -33,6 +56,12 @@ defineProps<{
   padding: 18px 24px;
   border-bottom: 1px solid #292c34;
   background: #17191f;
+}
+
+.header__actions{
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .header h1 {

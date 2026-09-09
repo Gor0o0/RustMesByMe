@@ -1,5 +1,7 @@
 <script setup lang="ts">
 
+import type { User } from "./types/user";
+
 // Импорт 2 функций из vue
 // onMounted() - запускает код после появления компонента
 // ref - создаёт быстрые перемещения
@@ -11,6 +13,24 @@ import Database from "@tauri-apps/plugin-sql";
 import AppHeader from "./components/AppHeader.vue";
 import MessageList from "./components/MessageList.vue";
 import MessageComposer from "./components/MessageComposer.vue";
+
+const oleg: User = {
+  id: 1,
+  name: "Oleg",
+};
+
+const am: User = {
+  id: 2,
+  name: "Am",
+};
+
+const users: User[] = [oleg, am];
+
+const currentUser = ref<User>(oleg);
+
+function selectUser(user: User){
+  currentUser.value = user;
+}
 
 // Создаём структуру одного сообщения
 
@@ -42,7 +62,10 @@ async function sendMessage(body: string){
 
   await db.execute(
       "INSERT INTO messages (author, body) VALUES ($1, $2)",
-      ["You", body]
+      [
+        currentUser.value.name,
+        body
+      ],
   );
 
   await loadMessages();
@@ -73,7 +96,12 @@ onMounted(async()=>{
 
 <template>
   <main class="app">
-    <AppHeader :status="status"/>
+    <AppHeader 
+      :status="status"
+      :users="users"
+      :current-user="currentUser"
+      @select="selectUser"
+    />
 
     <section class="chat">
       <div class="chat-info">
@@ -82,7 +110,10 @@ onMounted(async()=>{
         <p>Second local messager</p>
       </div>
 
-      <MessageList :messages="messages"/>
+      <MessageList 
+        :messages="messages"
+        :current-user-name="currentUser.name"
+      />
       <!-- потому-что событие -->
       <MessageComposer @send="sendMessage"/>
     </section>

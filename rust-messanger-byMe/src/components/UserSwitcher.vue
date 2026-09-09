@@ -2,7 +2,7 @@
 
 import type {User} from "../types/user";
 defineProps<{
-    user: User[];
+    users: User[];
     currentUserId: number;
 }>();
 
@@ -21,7 +21,7 @@ function selectUser(user: User){
     <div class="user-switcher">
         <span class="user-switcher__label">Write:</span>
     </div>
-        <button v-for="user in user" 
+        <button v-for="user in users"
             :key="user.id" 
             type="button" 
             class="user-switcher__button" 

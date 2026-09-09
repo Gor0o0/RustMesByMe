@@ -2,6 +2,7 @@
 
 // функция которая позволяет импортировать данные из одного файла в другой
 import { ref } from "vue";
+import EmojiPickme from "./EmojiPickme.vue";
 
 // defineEmits - сообщает vue какие из событий компонент имеет право рассылать
 const emit = defineEmits<{
@@ -10,6 +11,10 @@ const emit = defineEmits<{
 
 // Текст который пользователь вводит
 const draft = ref("");
+
+function giveEmoji(emoji: string) {
+    draft.value += emoji;
+}
 
 function submitMessage() {
     // Взять введённый пользователем текст и убрать проблемы по краям
@@ -29,6 +34,7 @@ function submitMessage() {
 
     <form class="composer" @submit.prevent="submitMessage">
         <input v-model="draft" type="text" placeholder="Write something finally" autocomplete="off" />
+        <EmojiPickme @pick="giveEmoji" />
         <button type="submit">Send</button>
     </form>
 
