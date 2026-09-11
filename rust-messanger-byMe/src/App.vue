@@ -50,21 +50,23 @@ async function loadMessages(){
 
   // Читаем данные из таблицы messages
   messages.value = await db.select<Message[]>(
-      "SELECT id, author, body, created_at FROM messages ORDER BY id ASC",
+      "SELECT id, author, body, created_at, image_path FROM messages ORDER BY id ASC",
 
   );
 }
 
 // Функция отправки нового сообщения
-async function sendMessage(body: string){
-  // Если база ещё не подключена прерываем выполнение
+async function sendMessage(body: string, imagePath?: string){
   if (!db) return;
+  const finalBody = body || (imagePath ? "[Изображение]" : "");
+  if (!finalBody && !imagePath) return;
 
   await db.execute(
-      "INSERT INTO messages (author, body) VALUES ($1, $2)",
+      "INSERT INTO messages (author, body, image_path) VALUES ($1, $2, $3)",
       [
         currentUser.value.name,
-        body
+        finalBody,
+        imagePath || null
       ],
   );
 

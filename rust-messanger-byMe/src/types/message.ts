@@ -6,4 +6,5 @@ export interface Message{
     author: string;
     body: string;
     created_at: string;
+    image_path?: string;
 }
