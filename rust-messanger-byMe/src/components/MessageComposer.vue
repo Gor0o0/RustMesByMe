@@ -3,8 +3,7 @@
 import { ref } from "vue";
 import EmojiPickme from "./EmojiPickme.vue";
 import { open } from "@tauri-apps/plugin-dialog";
-import { readFile, writeFile, mkdir, exists } from "@tauri-apps/plugin-fs";
-import { join, appDataDir, resolve } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 
 const emit = defineEmits<{
     send: [body: string, imagePath?: string];
@@ -23,30 +22,6 @@ function submitMessage() {
     draft.value = "";
 }
 
-function uint8ToBase64(bytes: Uint8Array): string {
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode.apply(
-            null,
-            Array.from(bytes.subarray(i, i + chunk)) as number[]
-        );
-    }
-    return btoa(binary);
-}
-
-function detectMime(ext: string): string {
-    switch (ext.toLowerCase()) {
-        case "png": return "image/png";
-        case "jpg":
-        case "jpeg": return "image/jpeg";
-        case "gif": return "image/gif";
-        case "webp": return "image/webp";
-        case "bmp": return "image/bmp";
-        default: return "image/png";
-    }
-}
-
 async function pickAndSendImage() {
     const selected = await open({
         multiple: false,
@@ -59,48 +34,12 @@ async function pickAndSendImage() {
 
     if (!selected || typeof selected !== "string") return;
 
-    const pathParts = selected.split(/[\\/]/);
-    const originalName = pathParts[pathParts.length - 1] || "image";
-    const dotIdx = originalName.lastIndexOf(".");
-    let cleanName = originalName;
-    let ext = "png";
-    if (dotIdx > 0) {
-        cleanName = originalName.substring(0, dotIdx);
-        ext = originalName.substring(dotIdx + 1);
-    }
-    const timestamp = Date.now();
-    const newFileName = `${timestamp}_${cleanName}.${ext}`;
-
-    const fileBytes = await readFile(selected);
-    const mime = detectMime(ext);
-    const base64 = uint8ToBase64(new Uint8Array(fileBytes.buffer, fileBytes.byteOffset, fileBytes.byteLength));
-    const dataUrl = `data:${mime};base64,${base64}`;
-
     try {
-        const catalogDir = await join(await appDataDir(), "Catalog");
-        if (!(await exists(catalogDir))) {
-            await mkdir(catalogDir, { recursive: true });
-        }
-        const destPath = await join(catalogDir, newFileName);
-        await writeFile(destPath, fileBytes);
+        const savedPath: string = await invoke("save_attachment", { source: selected });
+        emit("send", "", savedPath);
     } catch (e) {
-        console.warn("Не удалось сохранить в appDataDir Catalog:", e);
+        console.error("Не удалось сохранить вложение:", e);
     }
-
-    try {
-        const cwd = await resolve(".");
-        const srcCatalog = await join(cwd, "src", "Catalog");
-        if (!(await exists(srcCatalog))) {
-            await mkdir(srcCatalog, { recursive: true });
-        }
-        const srcDestPath = await join(srcCatalog, newFileName);
-        await writeFile(srcDestPath, fileBytes);
-    } catch (e) {
-        console.warn("Не удалось сохранить в src/Catalog:", e);
-    }
-
-    const imgHtml = `<img src="${dataUrl}" alt="Изображение" style="max-width:100%;max-height:300px;border-radius:8px;display:block;" />`;
-    emit("send", imgHtml, dataUrl);
 }
 
 </script>

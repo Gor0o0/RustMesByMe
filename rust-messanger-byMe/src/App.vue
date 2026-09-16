@@ -3,28 +3,38 @@
 import type { User } from "./types/user";
 
 // Импорт 2 функций из vue
-// onMounted() - запускает код после появления компонента
-// ref - создаёт быстрые перемещения
-import {onMounted, ref} from "vue";
+// onMounted - запускает код после появления компонента
+// ref -  создает быстрые перемещения
+import { onMounted, ref } from "vue";
 
-// Мои импорты
-import type { Message } from "./types/message.ts";
 import Database from "@tauri-apps/plugin-sql";
+
 import AppHeader from "./components/AppHeader.vue";
+
 import MessageList from "./components/MessageList.vue";
+
 import MessageComposer from "./components/MessageComposer.vue";
+
+import ChatSidebar from "./components/ChatSidebar.vue";
+
+import type { Chat } from "./types/chats";
+
+import type { Message } from "./types/message.ts";
 
 const oleg: User = {
   id: 1,
-  name: "Oleg",
+  name: "Олег",
 };
 
-const am: User = {
+const kirill: User = {
   id: 2,
-  name: "Am",
+  name: "Кирилл",
 };
 
-const users: User[] = [oleg, am];
+const users: User[] =[
+  oleg,
+  kirill,
+];
 
 const currentUser = ref<User>(oleg);
 
@@ -32,63 +42,92 @@ function selectUser(user: User){
   currentUser.value = user;
 }
 
-// Создаём структуру одного сообщения
+// Создаем структуру одного сообщения
 
-// список сообщений который vue отображает в диалоге на экране
+// Список сообщений, которые vue отображет в диалоге на экране
 const messages = ref<Message[]>([]);
 
-// статус подключения к бд
-const status = ref("Connection...")
+const chats = ref<Chat[]>([]);
 
-// Здесь будет подключение к бд (честно) но пока тут null
+const activeChat = ref<Chat | null>(null);
+
+const activeChatId = ref(1);
+
+// Статус подключения к бд
+const status = ref("Подключение...")
+
+// Здесь будет подключение к бд (честно), но пока тут null
 let db: Database | null = null;
 
+async function loadChats(){
+  if (!db) return;
+
+  chats.value = await db.select<Chat[]>(
+    "SELECT id, title, subtitle FROM chats ORDER BY id ASC",
+  );
+
+  if (chats.value.length > 0){
+    await selectChat(chats.value[0]);
+  }
+}
+
+async function selectChat(chat: Chat){
+  activeChat.value = chat;
+
+  activeChatId.value = chat.id;
+
+  await loadMessages(chat.id);
+}
+
 // Асинхронная функция загрузки сообщений из sql
-async function loadMessages(){
-  // Если база ещё не подключена прерываем выполнение
+async function loadMessages(chatId: number){
+  // Если база еще не подключена, прерываем выполнение
   if (!db) return;
 
   // Читаем данные из таблицы messages
   messages.value = await db.select<Message[]>(
-      "SELECT id, author, body, created_at, image_path FROM messages ORDER BY id ASC",
-
+    "SELECT id, author, body, created_at FROM messages WHERE chat_id = $1 ORDER BY id ASC",
+      [chatId],
   );
 }
 
 // Функция отправки нового сообщения
-async function sendMessage(body: string, imagePath?: string){
+async function sendMessage(body: string){
   if (!db) return;
-  const finalBody = body || (imagePath ? "[Изображение]" : "");
-  if (!finalBody && !imagePath) return;
+
+  if (!activeChat.value) return;
 
   await db.execute(
-      "INSERT INTO messages (author, body, image_path) VALUES ($1, $2, $3)",
+    `
+       INSERT INTO messages (
+            chat_id,
+            author,
+            body
+       )
+       VALUES ($1, $2, $3)
+    `,
       [
-        currentUser.value.name,
-        finalBody,
-        imagePath || null
+          activeChat.value.id,
+          currentUser.value.name,
+          body,
       ],
   );
-
-  await loadMessages();
+  await loadMessages(activeChat.value.id)
 }
 
-
-
-// VUE ыполнит код ниже когда интерфейс программы уже загрузится
+// VUE выполнит код ниже, когда интерфейс программы уже загрузится
 onMounted(async()=>{
   try{
     // Открываем бд
-    db = await Database.load("sqlite:messanger.db");
+    db = await Database.load("sqlite:messenger.db");
 
-    // загружаем из базы старые сообщения
-    await loadMessages();
+    // Загружаем из базы старые сообщения
+    await loadChats();
 
-    // Показываем успешное состояние
+    // Показываем успешеное состоние
     status.value = "История сохраняется локально";
   }catch (error){
     console.error(error);
-    console.log(error);
 
     status.value = "Ошибка подключения к базе";
   }
@@ -98,33 +137,37 @@ onMounted(async()=>{
 
 <template>
   <main class="app">
-    <AppHeader 
-      :status="status"
-      :users="users"
-      :current-user="currentUser"
-      @select="selectUser"
+    <AppHeader
+        :status="status"
+        :users="users"
+        :current-user="currentUser"
+        @select="selectUser"
     />
-
-    <section class="chat">
-      <div class="chat-info">
-        <h2>First chat</h2>
-
-        <p>Second local messager</p>
-      </div>
-
-      <MessageList 
-        :messages="messages"
-        :current-user-name="currentUser.name"
+    <div class="workspace">
+      <ChatSidebar
+          :chats="chats"
+          :active-chat-id="activeChatId"
+          @select="selectChat"
       />
-      <!-- потому-что событие -->
-      <MessageComposer @send="sendMessage"/>
-    </section>
-
+      <section class="chat">
+        <template v-if="activeChat">
+          <ChatInfo
+            :title="activeChat.title"
+            :subtitle="activeChat.subtitle"
+          />
+          <MessageList
+              :messages="messages"
+              :current-user-name="currentUser.name"
+          />
+          <MessageComposer @send="sendMessage" />
+        </template>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
-/* Все элементы будут */
+/* Все элементы будут использовать одну модель размеров */
 :global(*){
   box-sizing: border-box;
 }
@@ -150,11 +193,22 @@ onMounted(async()=>{
   background: #111318;
 }
 
+.workspace{
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
 .app{
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  height: 100vh; /* - */
-  overflow: hidden; /* запретит всему app прокручиваться, разрешим прокрутку ток для */
+  /*
+      Запретит всему app прокручиваться
+      Разрешим прокрутку только для MessageList
+  */
+  overflow: hidden;
 }
 
 .chat{
@@ -162,7 +216,7 @@ onMounted(async()=>{
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* чат целиком не должен прокручиваться, ток meslist внутри */
+  overflow: hidden; /* Потому что chat целиком не должен прокручиваться, только MessageList внутри него */
 }
 
 .chat-info{
@@ -180,6 +234,5 @@ onMounted(async()=>{
   color: #858c98;
   font-size: 13px;
 }
-
 
 </style>

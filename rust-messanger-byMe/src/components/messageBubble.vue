@@ -33,11 +33,11 @@ async function resolveImage() {
         }
     }
     try {
-        const catalogDir = await join(await appDataDir(), "Catalog");
-        const fullPath = await join(catalogDir, ip);
+        const appDir = await resolve(".");
+        const fullPath = await join(appDir, ip);
         resolvedImageSrc.value = convertFileSrc(fullPath);
     } catch (_e) {
-        resolvedImageSrc.value = `../Catalog/${ip}`;
+        resolvedImageSrc.value = `../${ip}`;
     }
 }
 
@@ -54,13 +54,15 @@ resolveImage();
             'message--other': !isOwn,
         }"
     >
-        <img
-            v-if="message.image_path && resolvedImageSrc && message.body === '[Изображение]'"
+        <img 
+            v-if="message.image_path && resolvedImageSrc"
             :src="resolvedImageSrc"
             class="message-image"
             alt="Изображение"
         />
-        <div v-if="message.body" class="message-body" v-html="message.body"></div>
+        <p v-if="message.body && message.body !== '[Изображение]'">
+            {{ message.body }}
+        </p>
         <footer>
             <span>
                 {{ message.author }}
@@ -91,24 +93,10 @@ resolveImage();
     background: #e625a6;
 }
 
-.message-body{
+.message p{
   margin: 0;
   line-height: 1.45;
   overflow-wrap: anywhere;
-}
-
-.message-body p{
-  margin: 0;
-}
-
-.message-body img{
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  display: block;
-  margin-bottom: 8px;
-  object-fit: contain;
-  background: #fff;
 }
 
 .message footer{

@@ -64,7 +64,7 @@ onMounted(scrollToBottom);
 
 <style scoped>
 
-.bottom-anchor {
+.buttom-anchor {
     height: 1px;
     flex-shrink: 0;
 }
