@@ -1,44 +1,22 @@
 <script setup lang="ts">
 
 import { ref, watchEffect } from "vue";
+import { getFileUrl } from "../types/file.ts";
 import type { Message } from "../types/message.ts";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { appDataDir, join, resolveResource } from "@tauri-apps/api/path";
 
-const props = defineProps < {
-    message: Message;
-    isOwn: boolean;
-} > ();
+const props = defineProps<{
+  message: Message;
+  isOwn: boolean;
+}>();
 
 const resolvedImageSrc = ref("");
 
 async function resolveImage() {
-    if (!props.message.image_path) {
-        resolvedImageSrc.value = "";
-        return;
-    }
-    const ip = props.message.image_path;
-    if (ip.startsWith("http://") || ip.startsWith("https://") || ip.startsWith("data:") || ip.startsWith("asset://") || ip.startsWith("file://")) {
-        resolvedImageSrc.value = ip;
-        return;
-    }
-    if (ip.includes("/") || ip.includes("\\")) {
-        try {
-            const rp = await resolveResource("../" + ip);
-            resolvedImageSrc.value = convertFileSrc(rp);
-            return;
-        } catch (_e) {
-            resolvedImageSrc.value = "../" + ip;
-            return;
-        }
-    }
-    try {
-        const appDir = await resolve(".");
-        const fullPath = await join(appDir, ip);
-        resolvedImageSrc.value = convertFileSrc(fullPath);
-    } catch (_e) {
-        resolvedImageSrc.value = `../${ip}`;
-    }
+  if (props.message.type !== "image" || !props.message.attachment) {
+    resolvedImageSrc.value = "";
+    return;
+  }
+  resolvedImageSrc.value = await getFileUrl(props.message.attachment);
 }
 
 watchEffect(resolveImage);
@@ -47,34 +25,50 @@ resolveImage();
 </script>
 
 <template>
-    <article 
-        class="message"
-        :class="{
-            'message--own': isOwn,
-            'message--other': !isOwn,
-        }"
+  <article
+      class="message"
+      :class="{
+        'message--own': isOwn,
+        'message--other': !isOwn,
+      }"
+  >
+    <p
+      v-if="message.type === 'text' && message.body"
     >
-        <img 
-            v-if="message.image_path && resolvedImageSrc"
-            :src="resolvedImageSrc"
-            class="message-image"
-            alt="Изображение"
-        />
-        <p v-if="message.body && message.body !== '[Изображение]'">
-            {{ message.body }}
-        </p>
-        <footer>
+      {{message.body}}
+    </p>
+
+    <img
+        v-if="message.type === 'image' && message.attachment && resolvedImageSrc"
+        class="message-image"
+        :src="resolvedImageSrc"
+        alt="Изображение"
+    />
+    <footer>
             <span>
-                {{ message.author }}
+              {{ message.author}}
             </span>
-            <span>
-                {{ message.created_at }}
+      <span>
+              |
             </span>
-        </footer>
-    </article>
+      <span>
+              {{message.created_at}}
+            </span>
+    </footer>
+  </article>
 </template>
 
 <style scoped>
+
+.message-image{
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-bottom: 8px;
+  display: block;
+  background: #fff;
+}
 
 .message{
   max-width: 70%;
@@ -82,15 +76,13 @@ resolveImage();
   padding: 10px 12px;
   border-radius: 10px;
 }
-
 .message--own{
-    align-self: flex-end;
-    background: #e6a225;
+  align-self: flex-end;
+  background: #386be0;
 }
-
 .message--other{
-    align-self: flex-start;
-    background: #e625a6;
+  align-self: flex-start;
+  background: #252830;
 }
 
 .message p{
@@ -104,18 +96,8 @@ resolveImage();
   justify-content: flex-end;
   gap: 5px;
   margin-top: 6px;
-  color: #ccd8f7;
+  color: #b5bbc7;
   font-size: 10px;
-}
-
-.message-image{
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  display: block;
-  object-fit: contain;
-  background: #fff;
 }
 
 </style>

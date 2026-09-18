@@ -1,54 +1,152 @@
-// Импорты типов необходимых для migrations
+
+// Импорт типов, необходимых для migrations
 use tauri_plugin_sql::{Migration, MigrationKind};
 
-// Аннотация необходимая Таури для мобильных платформ
-// на win она не мешает
+use std::path::Path;
+
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
+use tauri::Manager;
+// Аннотация небходимая Tauri для мобильных платформ
+// На Win она не мешает
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 #[tauri::command]
-fn save_attachment(source: String) -> Result<String, String> {
-    let allowed_extensions = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
+fn save_attachment(app: tauri::AppHandle, source: String) -> Result<String, String> {
+    // app: tauri::AppHandle - получаем через него системные директории приложения
 
-    let source_path = std::path::Path::new(&source);
+    // Создаём Path из строки
+    let source_path = Path::new(&source);
 
-    let extension = source_path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .ok_or_else(|| "Не удалось определить расширение файла".to_string())?
-        .to_lowercase();
+    // Проверка - действительно ли такой файл существует
+    if !source_path.is_file() {
+        return Err(
+            "Выбранный форман не существует"
+                .to_string()
+        );
+    }
+    // Получение расширения файла (у файла kirill.png - получим png)
+    let extension = source_path.
+        extension()
+        // extension() возвращает специальный системный тип OsStr
+        // Превращение его в обычный &str
+        .and_then(
+            |extension| extension.to_str()
+        )
+        // Привод расширения к нижнему регистру
+        .map(
+            |extension| extension.to_ascii_lowercase()
+        )
+        // Ошибка, если расширения нет вообще
+        .ok_or_else(
+            ||
+                "У файла нет расширения"
+                    .to_string()
+        )?;
 
-    if !allowed_extensions.contains(&extension.as_str()) {
-        return Err(format!(
-            "Недопустимое расширение файла: .{}. Разрешены: {}",
-            extension,
-            allowed_extensions.join(", .")
-        ));
+    let allowed_extensions = [
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "gif",
+    ];
+
+    // Проверка, находится ли расширение в списке разрешенных
+    if !allowed_extensions
+        .contains(
+            &extension.as_str()
+        )
+    {
+        return Err(
+            "Этот формат изображения не поддерживается"
+                .to_string()
+        );
     }
 
-    let app_dir = std::env::current_dir()
-        .map_err(|e| e.to_string())?;
+    // Получаем системный путь до файла
+    let app_data_dir =
+        app
+            .path()
+            .app_data_dir()
+            .map_err(
+                |error|
+                    error.to_string()
+            )?;
 
-    let attachment_dir = app_dir.join("attachment");
 
-    std::fs::create_dir_all(&attachment_dir)
-        .map_err(|e| e.to_string())?;
+    // Внутри app data создаётся: attachments
+    let attachments_dir =
+        app_data_dir
+            .join("attachments");
 
-    let file_name = format!("image_{}.{}", chrono::Utc::now().timestamp(), extension);
 
-    let destination = attachment_dir.join(&file_name);
+    // Создание папку, если её ещё нет.
+    std::fs::create_dir_all(
+        &attachments_dir
+    )
+        .map_err(
+            |error|
+                error.to_string()
+        )?;
 
+    // Получение времени компьютера
+    let timestamp =
+        SystemTime::now()
+
+            .duration_since(
+                UNIX_EPOCH
+            )
+            .map_err(
+                |error|
+                    error.to_string()
+            )?
+            .as_nanos();
+
+    // Подготовка имени файла
+    let file_name =
+    format!(
+        "image_{}.{}",
+        timestamp,
+        extension,
+    );
+
+    // Создание полного пути назначения.
+    let destination =
+        attachments_dir
+            .join(&file_name);
+
+    // Копирование файла в папку копий
     std::fs::copy(
-        source, &destination
+        source_path,
+        &destination,
     )
-        .map_err(|e| e.to_string())?;
+        .map_err(
+            |error|
+                error.to_string()
+        )?;
 
-    Ok(
-        format!(
-            "attachment/{}",
-            file_name
-        )
-    )
+    // По умолчанию destination сейчас PathBuf но на фронтент дано вернуть string
+    let saved_path =
+        destination
+            .to_str()
+
+            // Если путь окажется не в UTF-8 - то это будет ошибка
+            .ok_or_else(
+                ||
+                    "Не удалось преобразовать путь файла"
+                        .to_string()
+            )?
+
+            .to_string();
+
+    // Возврат итогового пути
+    Ok(saved_path)
 }
+
 
 // Главная функция для запуска приложения
 pub fn run() {
@@ -60,36 +158,29 @@ pub fn run() {
 
             description: "create_message_table",
 
-            // Берём SQL запрос из нашего файла
+            // Берем SQL запрос из нашего файла
             sql: include_str!("../migrations/0001_initial.sql"),
 
-            // Up - означает что база сдвинется вперёд
+            // up означает, что база сдвинется вперед
             kind: MigrationKind::Up,
         },
         Migration {
             version: 2,
-
             description: "create_chats",
-
             sql: include_str!("../migrations/0002_chats.sql"),
-
             kind: MigrationKind::Up,
         },
         Migration {
             version: 3,
-
             description: "message_attachments",
-
             sql: include_str!("../migrations/0003_message_attachments.sql"),
-
             kind: MigrationKind::Up,
         }
     ];
 
-    // Создаём сборщик приложения Tauri
+    // Создаем сбощик приложения Tauri
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         // Подключаем sql плагин
         .plugin(
             // Сборщик плагинов
@@ -99,14 +190,15 @@ pub fn run() {
                 // Собираем плагины
                 .build(),
         )
-        // Создаём plugin opener
+        // Создаем plugin opener
         .plugin(tauri_plugin_opener::init())
         // Запускаем приложение
         .invoke_handler(
-            tauri::generate_handler![save_attachment]
+            tauri::generate_handler![
+                save_attachment
+            ]
         )
         .run(tauri::generate_context!())
-
-        // Если запуск завершился с ошибкой то сообщаем об этом
-        .expect("error while running tauri application");
+        // Если запуск завершился с ошибкой, то сообщем об этом
+        .expect("Ошиюка при сборке приложения");
 }
