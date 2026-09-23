@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "rust-messanger-byme",
+  "productName": "encore-67-messanger",
   "version": "0.1.0",
-  "identifier": "com.copm11.rust-messanger-byme",
+  "identifier": "com.copm11.encore-67-messanger",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "rust-messanger-byme",
+        "title": "encore-67-messanger",
         "width": 800,
         "height": 600
       }
@@ -20,8 +20,10 @@
     "security": {
       "csp": null,
       "assetProtocol": {
-        "enable": false,
-        "scope": ["$APPDATA/attachments/**/*"]
+        "enable": true,
+        "scope": [
+          "$APPDATA/attachments/**/*"
+        ]
       }
     }
   },

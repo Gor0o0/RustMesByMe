@@ -1,27 +1,13 @@
 <script setup lang="ts">
 
-import { ref, watchEffect } from "vue";
 import { getFileUrl } from "../types/file.ts";
+
 import type { Message } from "../types/message.ts";
 
-const props = defineProps<{
+defineProps<{
   message: Message;
   isOwn: boolean;
 }>();
-
-const resolvedImageSrc = ref("");
-
-async function resolveImage() {
-  if (props.message.type !== "image" || !props.message.attachment) {
-    resolvedImageSrc.value = "";
-    return;
-  }
-  resolvedImageSrc.value = await getFileUrl(props.message.attachment);
-}
-
-watchEffect(resolveImage);
-resolveImage();
-
 </script>
 
 <template>
@@ -33,20 +19,29 @@ resolveImage();
       }"
   >
     <p
-      v-if="message.type === 'text' && message.body"
+      v-if="
+        message.type==='text'
+      "
     >
       {{message.body}}
     </p>
 
     <img
-        v-if="message.type === 'image' && message.attachment && resolvedImageSrc"
+        v-if="
+          message.type === 'image'
+          &&
+          message.attachment
+        "
         class="message-image"
-        :src="resolvedImageSrc"
-        alt="Изображение"
+        :src="
+          getFileUrl(
+            message.attachment
+          )
+        "
     />
     <footer>
             <span>
-              {{ message.author}}
+              {{ message.author_name}}
             </span>
       <span>
               |
@@ -65,9 +60,6 @@ resolveImage();
   max-height: 300px;
   border-radius: 12px;
   object-fit: cover;
-  margin-bottom: 8px;
-  display: block;
-  background: #fff;
 }
 
 .message{
