@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS users(
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
@@ -7,71 +7,72 @@ CREATE TABLE IF NOT EXISTS users(
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT OR IGNORE INTO users(
+INSERT OR IGNORE INTO users (
     id, username, display_name, status
 )
-VALUES(
-    1,
-    'Trippi777',
-    'Trippi',
-    'Online'
+VALUES (
+       1,
+       'oleg227',
+       'Олег',
+       'В сети'
 );
 
-INSERT OR IGNORE INTO users(
+INSERT OR IGNORE INTO users (
     id, username, display_name, status
 )
-VALUES(
-    2,
-    'Sahur98',
-    'Sahur',
-    'Online'
+VALUES (
+       2,
+       'kirill2010',
+       'Кирилл',
+       'В сети'
 );
 
-INSERT OR IGNORE INTO users(
+INSERT OR IGNORE INTO users (
     id, username, display_name, status
 )
-VALUES(
-    3,
-    'Abryz99',
-    'Ari',
-    'Online'
+VALUES (
+       3,
+       'mishasigma',
+       'Миша',
+       'В сети'
 );
 
-INSERT OR IGNORE INTO users(
-    username,
-    display_name
+
+INSERT OR IGNORE INTO users (
+       username,
+       display_name
 )
 SELECT
-    -- Технически username legacy_1 ...2.
-    -- CAST превращает число в тек
-    'legacy_' || CAST(old_authors.first_nessage_id AS TEXT),
-
+    -- Техничкеский username legacy_1 legacy_2 ....
+    -- CAST превращает число в текст
+    'legacy_' || CAST(old_authors.first_message_id AS TEXT),
     old_authors.author
 FROM (
     SELECT
-        MIN(id) AS first_nessage_id,
+        -- MIN(id) берем самый малый id сообщения для этого пользователя
+        MIN(id) AS first_message_id,
         author
     FROM messages
-    -- Создаём одну группу для каждого имени автора
+    -- Создаем одну группу для каждого имени автора
     GROUP BY author
 ) AS old_authors
 
 WHERE NOT EXISTS(
     SELECT 1
     FROM users
-    WHERE users.display_name = old_authors
+    WHERE users.display_name = old_authors.author
 );
 
-CREATE TABLE messages_new(
+CREATE TABLE messages_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_id INTEGER NOT NULL
-        REFERENCES chats(id) --Ссылка на users.id
-        ON DELETE CASCADE,  --Связанные с ним сообщения так же будут удалены
-    
+        REFERENCES chats(id)
+        ON DELETE CASCADE, --Связанные с ним сообщения так же будут удалены
+
     author_id INTEGER NOT NULL
-        REFERENCES users(id)
-        ON DELETE RESTRICT,  --Нельзя удалить пользователя если на него ссылаются сообщения
-    
+        REFERENCES users(id) --Ссылка на users.id
+        ON DELETE RESTRICT, --Нельзя удалить пользователя, если на него ссылаются сообщения
+
     type TEXT NOT NULL DEFAULT 'text',
 
     body TEXT,
@@ -80,16 +81,16 @@ CREATE TABLE messages_new(
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    -- проверяет и разрешает только типы из данного списка
-    CHECK(
-        type IN(
+    -- Проверяет и разрешает только типы из данного списка
+    CHECK (
+        type IN (
             'text',
             'image'
         )
     )
 );
 
-INSERT INTO messages_new(
+INSERT INTO messages_new (
     id,
     chat_id,
     author_id,
@@ -98,18 +99,21 @@ INSERT INTO messages_new(
     attachment,
     created_at
 )
-
 SELECT
-    -- Оста
+    -- Оставляем старый id тем же
     messages.id,
+    -- Оставляем старый chat_id
     messages.chat_id,
+    -- Вместо старого тексторовго author ищем настоящий users.id
     (
         SELECT users.id
+        FROM users
 
         WHERE
             users.display_name = messages.author
-        -- Если есть одинаковый display_name берём пользователя с меньшим id
-        ORDER BY users,id ASC
+
+        -- Если есть одинаковый display_name берем пользователя с меньшим id
+        ORDER BY users.id ASC
         LIMIT 1
     ),
     messages.type,
@@ -125,9 +129,9 @@ RENAME TO messages;
 
 -- Индексы нужны для быстрого поиска по сообщению или автору
 CREATE INDEX IF NOT EXISTS
-inx_messages_chat_id
+idx_messages_chat_id
 ON messages(chat_id);
 
 CREATE INDEX IF NOT EXISTS
-inx_messages_author_id
+idx_messages_author_id
 ON messages(author_id);

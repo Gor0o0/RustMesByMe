@@ -4,38 +4,36 @@ import type { User } from "./types/user";
 
 import ProfilerEditor from "./components/ProfilerEditor.vue";
 
-import { ProfileUpdate } from "./types/user";
+import type { ProfileUpdate } from "./types/user";
 
 const isProfileOpen = ref(false);
 
 function openProfile(){
   isProfileOpen.value = true;
 }
-
 function closeProfile(){
   isProfileOpen.value = false;
 }
 
-async function saveProfile(profile:ProfileUpdate,) {
-  if(!db) return;
-
-  if(!currentUser.value) return;
+async function saveProfile( profile: ProfileUpdate, ){
+  if (!db) return;
+  if (!currentUser.value) return;
 
   await db.execute(
-    `
-      UPDATE users
+      `
+        UPDATE users
 
-      SET
-        display_name = $1,
-        status = $2
+        SET
+            display_name = $1,
+            status = $2
 
-      WHERE id = $3
-    `,
-    [
-      profile.displayName,
-      profile.status,
-      currentUser.value?.id,
-    ],
+        WHERE id = $3
+      `,
+      [
+        profile.displayName,
+        profile.status,
+        currentUser.value.id,
+      ],
   );
 
   currentUser.value.display_name = profile.displayName;
@@ -43,11 +41,12 @@ async function saveProfile(profile:ProfileUpdate,) {
 
   if(activeChat.value){
     await loadMessages(
-      activeChat.value.id,
-    )
+        activeChat.value.id,
+    );
   }
-};
 
+  closeProfile();
+}
 // Импорт 2 функций из vue
 // onMounted - запускает код после появления компонента
 // ref -  создает быстрые перемещения
@@ -120,45 +119,45 @@ async function loadMessages(chatId: number){
   // Читаем данные из таблицы messages
   messages.value = await db.select<Message[]>(
     `
-      SELECT 
-        messages.id, 
-        messages.chat_id, 
-        author_id, 
-        users.display_name AS author_name,
-        users.avatar_path AS author_avatar,
-        messages.type, 
-        messages.body, 
-        messages.attachment, 
-        messages.created_at 
-      FROM messages 
-      INNER JOIN users
-        -- Возвращает только строки для которых нашёлся соотв. User
-        ON users.id = messages.author_id
-      WHERE chat_id = $1 
-      ORDER BY id ASC
-    `,
+            SELECT
+              messages.id,
+              messages.chat_id,
+              author_id,
+              users.display_name AS author_name,
+              users.avatar_path AS author_avatar,
+              messages.type,
+              messages.body,
+              messages.attachment,
+              messages.created_at
+            FROM messages
+            INNER JOIN users
+                -- Возвращает только строки, для которых нашелся соотв. User
+                ON users.id = messages.author_id
+            WHERE messages.chat_id = $1
+            ORDER BY messages.id ASC
+            `,
       [chatId],
   );
 }
 
-async function loadUsers() {
-  if(!db) return 
+async function loadUsers(){
+  if(!db) return;
 
   users.value =
-    await db.select<User[]>(
-      `
-        SELECT
-          id,
-          username,
-          display_name,
-          avatar_path,
-          status,
-          created_at
-        FROM users
-        ORDER BY id ASC
-      `
-    );
-  if(users.value.length > 0 && currentUser.value === null){
+      await db.select<User[]>(
+          `
+            SELECT
+              id,
+              username,
+              display_name,
+              avatar_path,
+              status,
+              created_at
+            FROM users
+            ORDER BY id ASC
+          `,
+      );
+  if (users.value.length > 0 && currentUser.value === null){
     currentUser.value = users.value[0];
   }
 }
@@ -169,7 +168,7 @@ async function sendMessage(body: string){
 
   if (!activeChat.value) return;
 
-  if(!currentUser.value) return;
+  if (!currentUser.value) return;
 
   await db.execute(
     `
@@ -226,7 +225,7 @@ async function sendImage(path:string){
           activeChat.value.id,
           currentUser.value.id,
           "image",
-          "null",
+          null,
           path,
       ]
   );
@@ -243,6 +242,7 @@ onMounted(async()=>{
     db = await Database.load("sqlite:messenger.db");
 
     await loadUsers();
+
     // Загружаем из базы старые сообщения
     await loadChats();
 
@@ -267,9 +267,10 @@ onMounted(async()=>{
         @select="selectUser"
         @profile="openProfile"
     />
-    <div 
+    <div
         v-if="currentUser"
-        class="workspace">
+        class="workspace"
+    >
       <ChatSidebar
           :chats="chats"
           :active-chat-id="activeChatId"
@@ -277,14 +278,14 @@ onMounted(async()=>{
       />
       <section class="chat">
         <template v-if="activeChat">
-          <ChatInfo
+        <!--<ChatInfo
             :title="activeChat.title"
             :subtitle="activeChat.subtitle"
-          />
+          />-->
           <MessageList
               :key="activeChat.id"
               :messages="messages"
-              :current-user-name="currentUser.id"
+              :current-user-id="currentUser.id"
           />
           <MessageComposer
               @send="sendMessage"
@@ -294,11 +295,11 @@ onMounted(async()=>{
       </section>
     </div>
     <ProfilerEditor
-      v-if="isProfileOpen && currentUser"
-      :key="currentUser.id"
-      :user="currentUser"
-      @save="saveProfile"
-      @close="closeProfile"
+        v-if="isProfileOpen && currentUser"
+        :key="currentUser.id"
+        :user="currentUser"
+        @save="saveProfile"
+        @close="closeProfile"
     />
   </main>
 </template>
@@ -373,13 +374,3 @@ onMounted(async()=>{
 }
 
 </style>
-
-
-
-
-
-
-
-
-
-
