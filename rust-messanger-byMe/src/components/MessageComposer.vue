@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import {ref} from "vue";
+
+import {ref, watch} from "vue";
 
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -13,6 +14,17 @@ const emit = defineEmits<{
 }>();
 
 const draft = ref("");
+
+const props = defineProps<{
+  editingText: string;
+}>();
+
+watch(
+    () => props.editingText,
+    (text) => {
+      draft.value = text;
+    }
+);
 
 function submitMessage(){
   // Взять введенный пользователем текст и убрать проблемы по краям

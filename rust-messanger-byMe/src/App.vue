@@ -79,6 +79,11 @@ function selectUser(user: User){
 // Список сообщений, которые vue отображет в диалоге на экране
 const messages = ref<Message[]>([]);
 
+
+const editingMessageId = ref<number | null>(null);
+const editingMessageText = ref("");
+
+
 const chats = ref<Chat[]>([]);
 
 const activeChat = ref<Chat | null>(null);
@@ -170,6 +175,27 @@ async function sendMessage(body: string){
 
   if (!currentUser.value) return;
 
+  if (editingMessageId.value !== null){
+    await db.execute(
+        `
+          UPDATE messages
+          SET body = $1
+          WHERE id = $2
+        `,
+        [
+          body,
+          editingMessageId.value,
+        ],
+    );
+
+    editingMessageId.value = null;
+    editingMessageText.value = "";
+
+    await loadMessages(activeChat.value.id);
+
+    return;
+  }
+
   await db.execute(
     `
        INSERT INTO messages (
@@ -189,7 +215,13 @@ async function sendMessage(body: string){
           null,
       ],
   );
+
   await loadMessages(activeChat.value.id)
+}
+
+function editMessage(id: number, body: string){
+  editingMessageId.value = id;
+  editingMessageText.value = body;
 }
 
 async function sendImage(path:string){
@@ -286,8 +318,10 @@ onMounted(async()=>{
               :key="activeChat.id"
               :messages="messages"
               :current-user-id="currentUser.id"
+              @edit="editMessage"
           />
           <MessageComposer
+              :editing-text="editingMessageText"
               @send="sendMessage"
               @sendImage="sendImage"
           />

@@ -4,12 +4,26 @@ import { getFileUrl } from "../types/file.ts";
 
 import type { Message } from "../types/message.ts";
 
-defineProps<{
+const props = defineProps<{
   message: Message;
   isOwn: boolean;
 }>();
-</script>
 
+const emit = defineEmits<{
+  edit: [id: number, body: string];
+}>();
+
+function editMessage(){
+  if (props.message.type !== "text") return;
+
+  emit(
+      "edit",
+      props.message.id,
+      props.message.body || ""
+  );
+}
+
+</script>
 <template>
   <article
       class="message"
@@ -18,6 +32,7 @@ defineProps<{
         'message--other': !isOwn,
       }"
   >
+
     <p
       v-if="
         message.type==='text'
@@ -39,17 +54,30 @@ defineProps<{
           )
         "
     />
+
     <footer>
-            <span>
-              {{ message.author_name}}
-            </span>
       <span>
-              |
-            </span>
+        {{ message.author_name}}
+      </span>
+
       <span>
-              {{message.created_at}}
-            </span>
+        |
+      </span>
+
+      <span>
+        {{message.created_at}}
+      </span>
+
+      <button
+          v-if="message.type === 'text' && isOwn"
+          type="button"
+          class="edit-button"
+          @click="editMessage"
+      >
+        R
+      </button>
     </footer>
+
   </article>
 </template>
 
@@ -68,10 +96,12 @@ defineProps<{
   padding: 10px 12px;
   border-radius: 10px;
 }
+
 .message--own{
   align-self: flex-end;
   background: #386be0;
 }
+
 .message--other{
   align-self: flex-start;
   background: #252830;
@@ -86,10 +116,25 @@ defineProps<{
 .message footer{
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 5px;
   margin-top: 6px;
   color: #b5bbc7;
   font-size: 10px;
+}
+
+.edit-button{
+  border: none;
+  border-radius: 5px;
+  padding: 3px 6px;
+  cursor: pointer;
+  color: white;
+  background: #2d55ad;
+  font-size: 10px;
+}
+
+.edit-button:hover{
+  background: #24458f;
 }
 
 </style>

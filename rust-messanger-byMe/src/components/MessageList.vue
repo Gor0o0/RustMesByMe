@@ -6,13 +6,17 @@ import {
   watch,          // озволяет следть за изменение выбранных данных
 } from "vue";
 
-import MessageBubble from "./MessageBubble.vue";
+import MessageBubble from "./messageBubble.vue";
 
 import type {Message} from "../types/message.ts";
 
 const props = defineProps<{
   messages: Message[];
   currentUserId: number;
+}>();
+
+const emit = defineEmits<{
+  edit: [id: number, body: string];
 }>();
 
 const bottomAnchor = useTemplateRef<HTMLDivElement>("bottom-anchor");
@@ -51,13 +55,16 @@ onMounted(scrollToBottom);
         <strong> Здесь пока пусто </strong>
         <span> Напишите первое сообщение </span>
       </div>
+
       <!-- Vue создает article для каждого сообщения из базы -->
       <MessageBubble
           v-for="message in messages"
           :key="message.id"
           :message="message"
           :is-own="message.author_id === currentUserId"
+          @edit="emit('edit', message.id, message.body || '')"
       />
+
       <div
         ref="bottom-anchor"
         class="bottom-anchor"
