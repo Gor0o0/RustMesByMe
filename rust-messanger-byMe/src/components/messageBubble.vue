@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   edit: [id: number, body: string];
+  delete: [id: number];
 }>();
 
 function editMessage(){
@@ -20,6 +21,15 @@ function editMessage(){
       "edit",
       props.message.id,
       props.message.body || ""
+  );
+}
+
+function deleteMessage(){
+  if (!props.isOwn) return;
+
+  emit(
+      "delete",
+      props.message.id
   );
 }
 
@@ -67,7 +77,14 @@ function editMessage(){
       <span>
         {{message.created_at}}
       </span>
-
+      <button
+          v-if="isOwn"
+          type="button"
+          class="edit-button"
+          @click="deleteMessage"
+      >
+        D
+      </button>
       <button
           v-if="message.type === 'text' && isOwn"
           type="button"

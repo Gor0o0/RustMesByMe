@@ -116,6 +116,24 @@ async function selectChat(chat: Chat){
   await loadMessages(chat.id);
 }
 
+async function deleteMessage(id: number){
+  if (!db) return;
+  if (!activeChat.value) return;
+  if (!currentUser.value) return;
+
+  await db.execute(
+    `
+      DELETE FROM messages
+      WHERE id = $1
+    `,
+    [
+      id,
+    ],
+  );
+
+  await loadMessages(activeChat.value.id);
+}
+
 // Асинхронная функция загрузки сообщений из sql
 async function loadMessages(chatId: number){
   // Если база еще не подключена, прерываем выполнение
@@ -166,7 +184,7 @@ async function loadUsers(){
     currentUser.value = users.value[0];
   }
 }
-
+ 
 // Функция отправки нового сообщения
 async function sendMessage(body: string){
   if (!db) return;
@@ -319,6 +337,7 @@ onMounted(async()=>{
               :messages="messages"
               :current-user-id="currentUser.id"
               @edit="editMessage"
+              @delete="deleteMessage"
           />
           <MessageComposer
               :editing-text="editingMessageText"

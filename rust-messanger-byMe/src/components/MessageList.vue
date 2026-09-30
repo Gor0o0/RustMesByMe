@@ -17,6 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   edit: [id: number, body: string];
+  delete: [id: number];
 }>();
 
 const bottomAnchor = useTemplateRef<HTMLDivElement>("bottom-anchor");
@@ -63,6 +64,7 @@ onMounted(scrollToBottom);
           :message="message"
           :is-own="message.author_id === currentUserId"
           @edit="emit('edit', message.id, message.body || '')"
+          @delete="$emit('delete', $event)"
       />
 
       <div
