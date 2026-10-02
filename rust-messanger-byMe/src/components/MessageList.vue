@@ -63,6 +63,7 @@ onMounted(scrollToBottom);
           :key="message.id"
           :message="message"
           :is-own="message.author_id === currentUserId"
+          :read-by-other="message.read_by_other"
           @edit="emit('edit', message.id, message.body || '')"
           @delete="$emit('delete', $event)"
       />

@@ -98,13 +98,40 @@ let db: Database | null = null;
 
 async function loadChats(){
   if (!db) return;
+  if (!currentUser.value) return;
 
   chats.value = await db.select<Chat[]>(
-    "SELECT id, title, subtitle FROM chats ORDER BY id ASC",
+    `
+      SELECT
+        chats.id,
+        chats.title,
+        chats.subtitle,
+
+        EXISTS (
+          SELECT 1
+          FROM messages
+          WHERE messages.chat_id = chats.id
+          AND messages.author_id != $1
+          AND NOT EXISTS (
+            SELECT 1
+            FROM message_reads
+            WHERE message_reads.message_id = messages.id
+            AND message_reads.user_id = $1
+          )
+        ) AS has_unread
+
+      FROM chats
+
+      ORDER BY chats.id ASC
+    `,
+    [
+      currentUser.value.id,
+    ],
   );
 
   if (chats.value.length > 0){
     await selectChat(chats.value[0]);
+    
   }
 }
 
@@ -112,6 +139,10 @@ async function selectChat(chat: Chat){
   activeChat.value = chat;
 
   activeChatId.value = chat.id;
+
+  await loadMessages(chat.id);
+
+  await markMessagesAsRead();
 
   await loadMessages(chat.id);
 }
@@ -136,30 +167,64 @@ async function deleteMessage(id: number){
 
 // Асинхронная функция загрузки сообщений из sql
 async function loadMessages(chatId: number){
-  // Если база еще не подключена, прерываем выполнение
   if (!db) return;
+  if (!currentUser.value) return;
 
-  // Читаем данные из таблицы messages
   messages.value = await db.select<Message[]>(
     `
-            SELECT
-              messages.id,
-              messages.chat_id,
-              author_id,
-              users.display_name AS author_name,
-              users.avatar_path AS author_avatar,
-              messages.type,
-              messages.body,
-              messages.attachment,
-              messages.created_at
-            FROM messages
-            INNER JOIN users
-                -- Возвращает только строки, для которых нашелся соотв. User
-                ON users.id = messages.author_id
-            WHERE messages.chat_id = $1
-            ORDER BY messages.id ASC
-            `,
-      [chatId],
+      SELECT
+        messages.id,
+        messages.chat_id,
+        messages.author_id,
+        users.display_name AS author_name,
+        users.avatar_path AS author_avatar,
+        messages.type,
+        messages.body,
+        messages.attachment,
+        messages.created_at,
+
+        EXISTS (
+          SELECT 1
+          FROM message_reads
+          WHERE message_reads.message_id = messages.id
+          AND message_reads.user_id != messages.author_id
+        ) AS read_by_other
+
+      FROM messages
+
+      INNER JOIN users
+        ON users.id = messages.author_id
+
+      WHERE messages.chat_id = $1
+
+      ORDER BY messages.id ASC
+    `,
+    [chatId],
+  );
+}
+
+async function markMessagesAsRead(){
+  if (!db) return;
+  if (!activeChat.value) return;
+  if (!currentUser.value) return;
+
+  await db.execute(
+    `
+      INSERT OR IGNORE INTO message_reads (
+        message_id,
+        user_id
+      )
+      SELECT
+        messages.id,
+        $1
+      FROM messages
+      WHERE messages.chat_id = $2
+      AND messages.author_id != $1
+    `,
+    [
+      currentUser.value.id,
+      activeChat.value.id,
+    ],
   );
 }
 

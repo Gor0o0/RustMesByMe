@@ -10,4 +10,5 @@ export interface Message{
     body: string | null;
     attachment: string | null;
     created_at: string;
+    read_by_other: boolean;
 }

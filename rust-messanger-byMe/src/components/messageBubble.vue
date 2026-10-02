@@ -7,6 +7,7 @@ import type { Message } from "../types/message.ts";
 const props = defineProps<{
   message: Message;
   isOwn: boolean;
+  readByOther: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,60 +15,50 @@ const emit = defineEmits<{
   delete: [id: number];
 }>();
 
-function editMessage(){
+function editMessage() {
   if (props.message.type !== "text") return;
 
   emit(
-      "edit",
-      props.message.id,
-      props.message.body || ""
+    "edit",
+    props.message.id,
+    props.message.body || ""
   );
 }
 
-function deleteMessage(){
+function deleteMessage() {
   if (!props.isOwn) return;
 
   emit(
-      "delete",
-      props.message.id
+    "delete",
+    props.message.id
   );
 }
 
 </script>
 <template>
-  <article
-      class="message"
-      :class="{
-        'message--own': isOwn,
-        'message--other': !isOwn,
-      }"
-  >
+  <article class="message" :class="{
+    'message--own': isOwn,
+    'message--other': !isOwn,
+  }">
 
-    <p
-      v-if="
-        message.type==='text'
-      "
-    >
-      {{message.body}}
+    <p v-if="
+      message.type === 'text'
+    ">
+      {{ message.body }}
     </p>
 
-    <img
-        v-if="
-          message.type === 'image'
-          &&
+    <img v-if="
+      message.type === 'image'
+      &&
+      message.attachment
+    " class="message-image" :src="getFileUrl(
           message.attachment
-        "
-        class="message-image"
-        :src="
-          getFileUrl(
-            message.attachment
-          )
-        "
-    />
+        )
+          " />
 
     <footer>
       <span>
-        {{ message.author_name}}
+        {{ message.author_name }}
       </span>
 
       <span>
@@ -75,24 +66,17 @@ function deleteMessage(){
       </span>
 
       <span>
-        {{message.created_at}}
+        {{ message.created_at }}
       </span>
-      <button
-          v-if="isOwn"
-          type="button"
-          class="edit-button"
-          @click="deleteMessage"
-      >
+      <button v-if="isOwn" type="button" class="edit-button" @click="deleteMessage">
         D
       </button>
-      <button
-          v-if="message.type === 'text' && isOwn"
-          type="button"
-          class="edit-button"
-          @click="editMessage"
-      >
+      <button v-if="message.type === 'text' && isOwn" type="button" class="edit-button" @click="editMessage">
         R
       </button>
+      <span v-if="isOwn" class="read-indicator" :class="{
+        'read-indicator--read': readByOther
+      }"></span>
     </footer>
 
   </article>
@@ -100,37 +84,49 @@ function deleteMessage(){
 
 <style scoped>
 
-.message-image{
+.read-indicator{
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #777;
+  display: inline-block;
+}
+
+.read-indicator--read{
+  background: orange;
+}
+
+.message-image {
   max-width: 300px;
   max-height: 300px;
   border-radius: 12px;
   object-fit: cover;
 }
 
-.message{
+.message {
   max-width: 70%;
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
 }
 
-.message--own{
+.message--own {
   align-self: flex-end;
   background: #386be0;
 }
 
-.message--other{
+.message--other {
   align-self: flex-start;
   background: #252830;
 }
 
-.message p{
+.message p {
   margin: 0;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-.message footer{
+.message footer {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -140,7 +136,7 @@ function deleteMessage(){
   font-size: 10px;
 }
 
-.edit-button{
+.edit-button {
   border: none;
   border-radius: 5px;
   padding: 3px 6px;
@@ -150,8 +146,7 @@ function deleteMessage(){
   font-size: 10px;
 }
 
-.edit-button:hover{
+.edit-button:hover {
   background: #24458f;
 }
-
 </style>
